@@ -37,9 +37,23 @@ Ray CreateCameraRay(float2 uv) {
 	return CreateRay(origin, direction);
 }
 
-[numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
-{
+struct RayHit {
+	float3 position;
+	float distance;
+	float3 normal;
+};
+
+RayHit CreateRayHit() {
+	RayHit hit;
+	hit.position = float3(0.0f, 0.0f, 0.0f);
+	hit.distance = 1.#INF;
+	hit.normal = float3(0.0f, 0.0f, 0.0f);
+	return hit;
+}
+
+
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID) {
 	// Get the dimensions of the RenderTexture
 	uint width, height;
 	Result.GetDimensions(width, height);
