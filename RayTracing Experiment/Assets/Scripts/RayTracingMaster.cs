@@ -8,6 +8,8 @@ public class RayTracingMaster : MonoBehaviour
     public Texture sky;
     private uint currentSample = 0;
     private Material addMaterial;
+    public Light directionalLight;
+
 
     private void Awake()
     {
@@ -16,15 +18,19 @@ public class RayTracingMaster : MonoBehaviour
 
     private void Update()
     {
-        if (transform.hasChanged)
+        if (transform.hasChanged || directionalLight.transform.hasChanged)
         {
             currentSample = 0;
             transform.hasChanged = false;
+            directionalLight.transform.hasChanged = false;
         }
     }
 
     private void SetShaderParameters()
     {
+        Vector3 light = directionalLight.transform.forward;
+        rayTracingShader.SetVector("_DirectionalLight", new Vector4(light.x, light.y, light.z, directionalLight.intensity));
+
         rayTracingShader.SetMatrix("_CameraToWorld", mainCamera.cameraToWorldMatrix);
         rayTracingShader.SetMatrix("_CameraInverseProjection", mainCamera.projectionMatrix.inverse);
         rayTracingShader.SetVector("_PixelOffset", new Vector2(Random.value, Random.value));

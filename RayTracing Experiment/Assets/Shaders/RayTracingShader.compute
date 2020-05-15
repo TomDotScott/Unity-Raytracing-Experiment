@@ -8,8 +8,9 @@ float4x4 _CameraToWorld;
 float4x4 _CameraInverseProjection;
 Texture2D<float4> _SkyBoxTexture;
 SamplerState sampler_SkyBoxTexture;
-static const float PI = 3.14159265f;
 float2 _PixelOffset;
+float4 _DirectionalLight;
+static const float PI = 3.14159265f;
 
 struct Ray
 {
@@ -111,14 +112,25 @@ float3 Shade(inout Ray _ray, RayHit _hit)
 {
     if (_hit.distance < 1.#INF)
     {
-        float3 specular = float3(0.6f, 0.6f, 0.6f);
+        float3 specular = float3(0.04f, 0.04f, 0.04f);
+        float3 albedo = (0.8f, 0.8f, 0.8f);
         
         _ray.origin = _hit.position + _hit.normal * 0.001f;
         _ray.direction = reflect(_ray.direction, _hit.normal);
         _ray.energy *= specular;
         
-        //return nothing
-        return float3(0.0f, 0.0f, 0.0f);
+        //Shadow test ray
+        bool shadow = false;
+        Ray shadowRay = CreateRay(_hit.position + _hit.normal * 0.001f, -1 * _DirectionalLight.xyz);
+        RayHit shadowHit = Trace(shadowRay);
+        if (shadowHit.distance != 1.#INF)
+        {
+            return float3(0, 0, 0);
+
+        }
+        
+        //return a diffuse-shaded colour
+        return saturate(dot(_hit.normal, _DirectionalLight.xyz) * -1) * _DirectionalLight.w * albedo;
     }
     else
     {
