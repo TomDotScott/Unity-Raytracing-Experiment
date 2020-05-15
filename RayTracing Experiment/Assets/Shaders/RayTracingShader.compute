@@ -9,7 +9,7 @@ float4x4 _CameraInverseProjection;
 Texture2D<float4> _SkyBoxTexture;
 SamplerState sampler_SkyBoxTexture;
 static const float PI = 3.14159265f;
-float2 _PixelOffset;
+
 
 struct Ray {
 	float3 origin;
@@ -108,7 +108,7 @@ void CSMain(uint3 id : SV_DispatchThreadID) {
 	Result.GetDimensions(width, height);
 
 	// Transform pixel to [-1,1] range
-	float2 uv = float2((id.xy + _PixelOffset) / float2(width, height) * 2.0f - 1.0f);
+	float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height) * 2.0f - 1.0f);
 
 	// Get a ray for the UVs
 	Ray ray = CreateCameraRay(uv);
