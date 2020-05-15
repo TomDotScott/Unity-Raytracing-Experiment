@@ -6,16 +6,28 @@ public class RayTracingMaster : MonoBehaviour
     private RenderTexture target;
     private Camera mainCamera;
     public Texture sky;
+    private uint currentSample = 0;
+    private Material addMaterial;
 
     private void Awake()
     {
         mainCamera = GetComponent<Camera>();
     }
 
+    private void Update()
+    {
+        if (transform.hasChanged)
+        {
+            currentSample = 0;
+            transform.hasChanged = false;
+        }
+    }
+
     private void SetShaderParameters()
     {
         rayTracingShader.SetMatrix("_CameraToWorld", mainCamera.cameraToWorldMatrix);
         rayTracingShader.SetMatrix("_CameraInverseProjection", mainCamera.projectionMatrix.inverse);
+        rayTracingShader.SetVector("_PixelOffset", new Vector2(Random.value, Random.value));
         rayTracingShader.SetTexture(0, "_SkyBoxTexture", sky);
     }
 
@@ -37,7 +49,13 @@ public class RayTracingMaster : MonoBehaviour
         rayTracingShader.Dispatch(0, threadGroupsX, threadGroupsY, 1);
 
         //Blit the resulting texture to the screen
+        if(addMaterial == null)
+        {
+            addMaterial = new Material(Shader.Find("Hidden/AddShader"));
+        }
+        addMaterial.SetFloat("_Sample", currentSample);
         Graphics.Blit(target, _destination);
+        currentSample++;
     }
 
     private void InitRenderTexture()
