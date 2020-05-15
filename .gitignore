@@ -47,6 +47,7 @@ ExportedObj/
 *.pidb.meta
 *.pdb.meta
 *.mdb.meta
+*.meta
 
 # Unity3D generated file on crash reports
 sysinfo.txt
@@ -58,3 +59,10 @@ sysinfo.txt
 # Crashlytics generated file
 crashlytics-build.properties
 
+Assets/Materials/Blue Light.mat.meta
+Assets/Real Stars Skybox/StarSkybox04/CubemapStars.cubemap
+*.zip
+.idea/.idea.Unity-Parkour/.idea/contentModel.xml
+.idea/.idea.Unity-Parkour/.idea/.idea.Unity-Parkour.iml
+*.xml
+*.iml
