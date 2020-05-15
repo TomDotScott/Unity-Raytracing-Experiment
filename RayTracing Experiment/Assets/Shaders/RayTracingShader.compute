@@ -61,9 +61,30 @@ void IntersectGroundPlane(Ray _ray, inout RayHit _bestHit) {
 	}
 }
 
+void IntersectSphere(Ray _ray, inout RayHit _bestHit, float4 _sphere) {
+	//Calculate the distance along the ray where the sphere is intersected
+	float3 d = _ray.origin - _sphere.xyz;
+	float p1 = -dot(_ray.direction, d);
+	float p2sqr = p1 * p1 - dot(d, d) + _sphere.w * _sphere.w;
+
+	if (p2sqr < 0) {
+		return;
+	}
+
+	float p2 = sqrt(p2sqr);
+	float t = p1 - p2 > 0 ? p1 - p2 : p1 + p2;
+
+	if (t > 0 && t < _bestHit.distance) {
+		_bestHit.distance = t;
+		_bestHit.position = _ray.origin + t * _ray.direction;
+		_bestHit.normal = normalize(_bestHit.position - _sphere.xyz);
+	}
+}
+
 RayHit Trace(Ray _ray) {
 	RayHit bestHit = CreateRayHit();
 	IntersectGroundPlane(_ray, bestHit);
+	IntersectSphere(_ray, bestHit, float4(0, 3.0f, 0, 1.0f));
 	return bestHit;
 }
 
