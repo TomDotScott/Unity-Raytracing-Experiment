@@ -51,6 +51,34 @@ RayHit CreateRayHit() {
 	return hit;
 }
 
+void IntersectGroundPlane(Ray _ray, inout RayHit _bestHit) {
+	//calculate the distance along the ray where the ground plane is intersected
+	float t = -_ray.origin.y / _ray.direction.y;
+	if (t > 0 && t < _bestHit.distance) {
+		_bestHit.distance = t;
+		_bestHit.position = _ray.origin + t * _ray.direction;
+		_bestHit.normal = float3(0.0f, 1.0f, 0.0f);
+	}
+}
+
+RayHit Trace(Ray _ray) {
+	RayHit bestHit = CreateRayHit();
+	IntersectGroundPlane(_ray, bestHit);
+	return bestHit;
+}
+
+float3 Shade(inout Ray _ray, RayHit _hit) {
+	if (_hit.distance < 1.#INF) {
+		//return the normal
+		return _hit.normal * 0.5f + 0.5f;
+	} else {
+		// Sample the skybox and write it
+		float theta = acos(_ray.direction.y) / PI;
+		float phi = atan2(_ray.direction.x, -_ray.direction.z / 2) / 0.5f * PI;
+		return _SkyBoxTexture.SampleLevel(sampler_SkyBoxTexture, float2(phi, theta), 0).xyz;
+	}
+}
+
 
 [numthreads(8, 8, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID) {
@@ -64,8 +92,8 @@ void CSMain(uint3 id : SV_DispatchThreadID) {
 	// Get a ray for the UVs
 	Ray ray = CreateCameraRay(uv);
 
-	// Sample the skybox and write it
-	float theta = acos(ray.direction.y) / PI;
-	float phi = atan2(ray.direction.x, -ray.direction.z / 2) / 0.5f * PI;
-	Result[id.xy] = _SkyBoxTexture.SampleLevel(sampler_SkyBoxTexture, float2(phi, theta), 0);
+	//Trace and Shade
+	RayHit hit = Trace(ray);
+	float3 result = Shade(ray, hit);
+	Result[id.xy] = float4(result, 1);
 }

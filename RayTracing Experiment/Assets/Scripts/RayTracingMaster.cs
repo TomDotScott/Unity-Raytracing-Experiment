@@ -14,9 +14,9 @@ public class RayTracingMaster : MonoBehaviour
 
     private void SetShaderParameters()
     {
-        rayTracingShader.SetTexture(0, "_SkyBoxTexture", sky);
         rayTracingShader.SetMatrix("_CameraToWorld", mainCamera.cameraToWorldMatrix);
         rayTracingShader.SetMatrix("_CameraInverseProjection", mainCamera.projectionMatrix.inverse);
+        rayTracingShader.SetTexture(0, "_SkyBoxTexture", sky);
     }
 
     private void OnRenderImage(RenderTexture _source, RenderTexture _destination)
