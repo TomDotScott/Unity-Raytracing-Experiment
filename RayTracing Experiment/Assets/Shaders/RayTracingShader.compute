@@ -4,11 +4,48 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> Result;
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+
+struct Ray {
+	float3 origin;
+	float3 direction;
+};
+
+Ray CreateRay(float3 _origin, float3 _direction) {
+	Ray ray;
+	ray.origin = _origin;
+	ray.direction = _direction;
+	return ray;
+}
+
+Ray CreateCameraRay(float2 uv) {
+	//Transform the camera origin to world space
+	float3 origin = mul(_CameraToWorld, float4(0.0f, 0.0f, 0.0f, 1.0f)).xyz;
+
+	//invert the perspective projection
+	float3 direction = mul(_CameraInverseProjection, float4(uv, 0.0f, 1.0f)).xyz;
+
+	//transform the direction from camera to world space and normalise
+	direction = mul(_CameraToWorld, float4(direction, 0.0f)).xyz;
+	direction = normalize(direction);
+
+	return CreateRay(origin, direction);
+}
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    // TODO: insert actual code here!
+	// Get the dimensions of the RenderTexture
+	uint width, height;
+	Result.GetDimensions(width, height);
 
-    Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+	// Transform pixel to [-1,1] range
+	float2 uv = float2((id.xy + float2(0.5f, 0.5f)) / float2(width, height) * 2.0f - 1.0f);
+
+	// Get a ray for the UVs
+	Ray ray = CreateCameraRay(uv);
+
+	// Write some colors
+	Result[id.xy] = float4(ray.direction * 0.5f + 0.5f, 1.0f);
 }
