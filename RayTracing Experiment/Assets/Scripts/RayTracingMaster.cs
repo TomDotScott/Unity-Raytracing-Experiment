@@ -54,7 +54,7 @@ public class RayTracingMaster : MonoBehaviour
             addMaterial = new Material(Shader.Find("Hidden/AddShader"));
         }
         addMaterial.SetFloat("_Sample", currentSample);
-        Graphics.Blit(target, _destination);
+        Graphics.Blit(target, _destination, addMaterial);
         currentSample++;
     }
 
