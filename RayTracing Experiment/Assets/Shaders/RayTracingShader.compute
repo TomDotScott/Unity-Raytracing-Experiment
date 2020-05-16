@@ -163,39 +163,41 @@ RayHit Trace(Ray _ray)
     return bestHit;
 }
 
+float energy(float3 _colour)
+{
+    return dot(_colour, 1.0f / 3.0f);
+}
+
+
 float3 Shade(inout Ray _ray, RayHit _hit)
 {
     if (_hit.distance < 1.#INF)
-    {
-        /*float3 specular = _hit.specular;
-        float3 albedo = _hit.albedo;
+    {        
+        // Calculate the chances of Specular or Diffuse reflections
+        _hit.albedo = min(1.0f - _hit.specular, _hit.albedo);
+        float specChance = energy(_hit.specular);
+        float diffChance = energy(_hit.albedo);
+        float sum = specChance + diffChance;
+        specChance /= sum;
+        diffChance /= sum;
         
-        _ray.origin = _hit.position + _hit.normal * 0.001f;
-        _ray.direction = reflect(_ray.direction, _hit.normal);
-        _ray.energy *= specular;
-        
-        //Shadow test ray
-        bool shadow = false;
-        Ray shadowRay = CreateRay(_hit.position + _hit.normal * 0.001f, -1 * _DirectionalLight.xyz);
-        RayHit shadowHit = Trace(shadowRay);
-        if (shadowHit.distance != 1.#INF)
+        // Roulette the ray's path
+        float roulette = rand();
+        if (roulette < specChance)
         {
-            return float3(0, 0, 0);
-
+            // Do Specular Reflections
+            _ray.origin = _hit.position + _hit.normal * 0.001f;
+            _ray.direction = reflect(_ray.direction, _hit.normal);
+            _ray.energy *= (1.0f / specChance) * _hit.specular * sdot(_hit.normal, _ray.direction);
         }
-        
-        //return a diffuse-shaded colour
-        return saturate(dot(_hit.normal, _DirectionalLight.xyz) * -1) * _DirectionalLight.w * albedo;*/
-        
-        // Lambert and Phong BDRF !
-        _ray.origin = _hit.position + _hit.normal + 0.001f;
-        float3 reflected = reflect(_ray.direction, _hit.normal);
-        _ray.direction = SampleHemisphere(_hit.normal);
-        float3 diffuse = 2 * min(1.0f - _hit.specular, _hit.albedo);
-        float alpha = 300.0f;
-        float3 specular = _hit.specular * (alpha + 2) * pow(sdot(_ray.direction, reflected), alpha);
-        _ray.energy *= (diffuse + specular) * sdot(_hit.normal, _ray.direction);
-        return 0.0f;
+        else
+        {
+            // Do Diffuse Reflections
+            _ray.origin = _hit.position + _hit.normal * 0.001f;
+            _ray.direction = SampleHemisphere(_hit.normal);
+            _ray.energy *= (1.0f / diffChance) * 2 * _hit.albedo * sdot(_hit.normal, _ray.direction);
+        }
+        return 0;
     }
     else
     {
