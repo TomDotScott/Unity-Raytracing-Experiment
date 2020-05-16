@@ -137,11 +137,11 @@ float3x3 GetTangentSpace(float3 _normal)
 }
 
 
-float3 SampleHemisphere(float3 _normal)
+float3 SampleHemisphere(float3 _normal, float _alpha)
 {
     // Uniformly sample hemisphere direction
-    float cosTheta = rand();
-    float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
+    float cosTheta = pow(rand(), 1.0f / (_alpha + 1.0f));
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
     float phi = 2 * PI * rand();
     float3 tangentSpaceDirection = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
     
@@ -186,16 +186,18 @@ float3 Shade(inout Ray _ray, RayHit _hit)
         if (roulette < specChance)
         {
             // Do Specular Reflections
+            float alpha = 15.0f;
             _ray.origin = _hit.position + _hit.normal * 0.001f;
-            _ray.direction = reflect(_ray.direction, _hit.normal);
-            _ray.energy *= (1.0f / specChance) * _hit.specular * sdot(_hit.normal, _ray.direction);
+            _ray.direction = SampleHemisphere(reflect(_ray.direction, _hit.normal), alpha);
+            float f = (alpha + 2) / (alpha + 1);
+            _ray.energy *= (1.0f / specChance) * _hit.specular * sdot(_hit.normal, _ray.direction, f);
         }
         else
         {
             // Do Diffuse Reflections
             _ray.origin = _hit.position + _hit.normal * 0.001f;
-            _ray.direction = SampleHemisphere(_hit.normal);
-            _ray.energy *= (1.0f / diffChance) * 2 * _hit.albedo * sdot(_hit.normal, _ray.direction);
+            _ray.direction = SampleHemisphere(_hit.normal, 1.0f);
+            _ray.energy *= (1.0f / diffChance) * _hit.albedo;
         }
         return 0;
     }
