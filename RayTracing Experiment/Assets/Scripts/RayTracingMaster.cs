@@ -7,7 +7,10 @@ using System.Collections.Generic;
 public class RayTracingMaster : MonoBehaviour
 {
     public ComputeShader rayTracingShader;
+
     private RenderTexture target;
+    private RenderTexture converged;
+
     private Camera mainCamera;
     public Texture sky;
     private uint currentSample = 0;
@@ -15,6 +18,7 @@ public class RayTracingMaster : MonoBehaviour
     public Light directionalLight;
 
     [Header("Sphere Controls")]
+    public int sphereSeed;
     public Vector2 sphereRadius;
     public uint spheresMax;
     public float spherePlacementRadius;
@@ -59,6 +63,7 @@ public class RayTracingMaster : MonoBehaviour
 
     private void SetUpScene()
     {
+        Random.InitState(sphereSeed);
         List<Sphere> spheres = new List<Sphere>();
         // Add a number of random spheres
         for (int i = 0; i < spheresMax; i++)
@@ -125,7 +130,8 @@ public class RayTracingMaster : MonoBehaviour
             addMaterial = new Material(Shader.Find("Hidden/AddShader"));
         }
         addMaterial.SetFloat("_Sample", currentSample);
-        Graphics.Blit(target, _destination, addMaterial);
+        Graphics.Blit(target, converged, addMaterial);
+        Graphics.Blit(converged, _destination);
         currentSample++;
     }
 
@@ -141,6 +147,15 @@ public class RayTracingMaster : MonoBehaviour
             target.enableRandomWrite = true;
             target.Create();
         }
-
+        if (converged == null || converged.width != Screen.width || converged.height != Screen.height)
+        {
+            if (converged != null)
+            {
+                converged.Release();
+            }
+            converged = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            converged.enableRandomWrite = true;
+            converged.Create();
+        }
     }
 }
