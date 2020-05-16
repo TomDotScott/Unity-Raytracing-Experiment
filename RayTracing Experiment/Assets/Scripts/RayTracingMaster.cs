@@ -100,12 +100,12 @@ public class RayTracingMaster : MonoBehaviour
     {
         Vector3 light = directionalLight.transform.forward;
         rayTracingShader.SetVector("_DirectionalLight", new Vector4(light.x, light.y, light.z, directionalLight.intensity));
-        rayTracingShader.SetFloat("_Seed", Random.value);
         rayTracingShader.SetMatrix("_CameraToWorld", mainCamera.cameraToWorldMatrix);
         rayTracingShader.SetMatrix("_CameraInverseProjection", mainCamera.projectionMatrix.inverse);
         rayTracingShader.SetVector("_PixelOffset", new Vector2(Random.value, Random.value));
         rayTracingShader.SetTexture(0, "_SkyBoxTexture", sky);
         rayTracingShader.SetBuffer(0, "_Spheres", sphereBuffer);
+        rayTracingShader.SetFloat("_Seed", Random.value);
     }
 
     private void OnRenderImage(RenderTexture _source, RenderTexture _destination)

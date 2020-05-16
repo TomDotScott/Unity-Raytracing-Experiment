@@ -37,6 +37,12 @@ float rand()
     return result;
 }
 
+// Saturated Dot multiplication
+float sdot(float3 x, float3 y, float f = 1.0f)
+{
+    return saturate(dot(x, y) * f);
+}
+
 Ray CreateRay(float3 _origin, float3 _direction)
 {
     Ray ray;
@@ -135,7 +141,7 @@ float3 SampleHemisphere(float3 _normal)
 {
     // Uniformly sample hemisphere direction
     float cosTheta = rand();
-    float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * sinTheta));
+    float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
     float phi = 2 * PI * rand();
     float3 tangentSpaceDirection = float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
     
@@ -161,7 +167,7 @@ float3 Shade(inout Ray _ray, RayHit _hit)
 {
     if (_hit.distance < 1.#INF)
     {
-        float3 specular = _hit.specular;
+        /*float3 specular = _hit.specular;
         float3 albedo = _hit.albedo;
         
         _ray.origin = _hit.position + _hit.normal * 0.001f;
@@ -179,7 +185,17 @@ float3 Shade(inout Ray _ray, RayHit _hit)
         }
         
         //return a diffuse-shaded colour
-        return saturate(dot(_hit.normal, _DirectionalLight.xyz) * -1) * _DirectionalLight.w * albedo;
+        return saturate(dot(_hit.normal, _DirectionalLight.xyz) * -1) * _DirectionalLight.w * albedo;*/
+        
+        // Lambert and Phong BDRF !
+        _ray.origin = _hit.position + _hit.normal + 0.001f;
+        float3 reflected = reflect(_ray.direction, _hit.normal);
+        _ray.direction = SampleHemisphere(_hit.normal);
+        float3 diffuse = 2 * min(1.0f - _hit.specular, _hit.albedo);
+        float alpha = 300.0f;
+        float3 specular = _hit.specular * (alpha + 2) * pow(sdot(_ray.direction, reflected), alpha);
+        _ray.energy *= (diffuse + specular) * sdot(_hit.normal, _ray.direction);
+        return 0.0f;
     }
     else
     {
@@ -189,7 +205,7 @@ float3 Shade(inout Ray _ray, RayHit _hit)
 		// Sample the skybox and write it
         float theta = acos(_ray.direction.y) / -PI;
         float phi = atan2(_ray.direction.x, -_ray.direction.z / 2) / -PI * 0.5f;
-        return _SkyBoxTexture.SampleLevel(sampler_SkyBoxTexture, float2(phi, theta), 0).xyz;
+        return _SkyBoxTexture.SampleLevel(sampler_SkyBoxTexture, float2(phi, theta), 0).xyz * 2.5;
     }
 }
 
