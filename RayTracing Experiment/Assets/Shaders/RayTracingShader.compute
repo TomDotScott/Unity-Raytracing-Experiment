@@ -54,6 +54,20 @@ struct Sphere
 
 StructuredBuffer<Sphere> _Spheres;
 
+//-------------------------------------
+//- MESHES
+struct MeshObject
+{
+    float4x4 localToWorldMatrix;
+    int indicesOffset;
+    int indicesCount;
+};
+
+StructuredBuffer<MeshObject> _MeshObjects;
+StructuredBuffer<float3> _Vertices;
+StructuredBuffer<int> _Indices;
+
+
 
 //-------------------------------------
 //- RAY
@@ -158,12 +172,11 @@ void IntersectSphere(Ray _ray, inout RayHit _bestHit, Sphere _sphere)
     }
 }
 
-
 bool IntersectTriangle(Ray _ray, float3 _vert0, float3 _vert1, float3 _vert2, inout float _t, inout float _u, inout float _v)
 {
     // Find the vectors for the two edges sharing vertex 0
     float3 edge1 = _vert1 - _vert0;
-    float edge2 = _vert2 - _vert0;
+    float3 edge2 = _vert2 - _vert0;
     
     // Calculate the determinant 
     float3 pVec = cross(_ray.direction, edge2);
@@ -183,7 +196,8 @@ bool IntersectTriangle(Ray _ray, float3 _vert0, float3 _vert1, float3 _vert2, in
     
     // Calculate U and test bounds
     _u = dot(tVec, pVec) * invDet;
-    if (_u < 0.0f || _u > 1.0f){
+    if (_u < 0.0f || _u > 1.0f)
+    {
         return false;
     }
     
@@ -200,6 +214,33 @@ bool IntersectTriangle(Ray _ray, float3 _vert0, float3 _vert1, float3 _vert2, in
     return true;
 }
 
+void IntersectMeshObject(Ray _ray, inout RayHit _hit, MeshObject _mesh)
+{
+    uint offset = _mesh.indicesOffset;
+    uint count = _mesh.indicesCount;
+    
+    for (uint i = 0; i < count; i += 3)
+    {
+        float3 v0 = (mul(_mesh.localToWorldMatrix, float4(_Vertices[_Indices[i]], 1))).xyz;
+        float3 v1 = (mul(_mesh.localToWorldMatrix, float4(_Vertices[_Indices[i + 1]], 1))).xyz;
+        float3 v2 = (mul(_mesh.localToWorldMatrix, float4(_Vertices[_Indices[i + 2]], 1))).xyz;
+        
+        float t, u, v;
+        if (IntersectTriangle(_ray, v0, v1, v2, t, u, v))
+        {
+            if (t > 0 && t < _hit.distance)
+            {
+                _hit.distance = t;
+                _hit.position = _ray.origin + t * _ray.direction;
+                _hit.normal = normalize(cross(v1 - v0, v2 - v0));
+                _hit.albedo = 0.0f;
+                _hit.specular = 0.65f;
+                _hit.smoothness = 0.99f;
+                _hit.emission = 0;
+            }
+        }
+    }
+}
 
 
 //-------------------------------------
@@ -209,35 +250,25 @@ RayHit Trace(Ray _ray)
 {
     RayHit bestHit = CreateRayHit();
 
-    // Trace ground plane
+    uint count, stride, i;
+    
+    //Trace the ground plane
     IntersectGroundPlane(_ray, bestHit);
-
-    // Trace a single triangle
-    float3 v0 = float3(-150.0f, 0, -150.0f);
-    float3 v1 = float3(150.0f, 0, -150.0f);
-    float3 v2 = float3(0, 150.0f * sqrt(2), -150.0f);
-    float t, u, v;
-    if (IntersectTriangle(_ray, v0, v1, v2, t, u, v))
+    
+    //Trace Spheres
+    _Spheres.GetDimensions(count, stride);
+    for (i = 0; i < count; i++)
     {
-        if (t > 0 && t < bestHit.distance)
-        {
-            bestHit.distance = t;
-            bestHit.position = _ray.origin + t * _ray.direction;
-            bestHit.normal = normalize(cross(v1 - v0, v2 - v0));
-            bestHit.albedo = 0.00f;
-            bestHit.specular = 0.065 * float3(1.0f, 0.4f, 0.2f);
-            bestHit.smoothness = 0.9f;
-            bestHit.emission = 0.0f;
-        }
+        IntersectSphere(_ray, bestHit, _Spheres[i]);
     }
     
+    //Trace Meshes
+    _MeshObjects.GetDimensions(count, stride);
+    for (i = 0; i < count; i++)
+    {
+        IntersectMeshObject(_ray, bestHit, _MeshObjects[i]);
+    }
     
-    
-    // Trace spheres
-    uint numSpheres, stride;
-    _Spheres.GetDimensions(numSpheres, stride);
-    for (uint i = 0; i < numSpheres; i++)
-        IntersectSphere(_ray, bestHit, _Spheres[i]);
     return bestHit;
 }
 
