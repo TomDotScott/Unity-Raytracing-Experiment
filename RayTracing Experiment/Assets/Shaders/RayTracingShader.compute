@@ -66,6 +66,9 @@ struct MeshObject
     float4x4 localToWorldMatrix;
     int indices_offset;
     int indices_count;
+    float3 albedo;
+    float3 specular;
+    float smoothness;
 };
 
 StructuredBuffer<MeshObject> _MeshObjects;
@@ -233,10 +236,9 @@ void IntersectMeshObject(Ray _ray, inout RayHit _bestHit, MeshObject _meshObject
                 _bestHit.distance = t;
                 _bestHit.position = _ray.origin + t * _ray.direction;
                 _bestHit.normal = normalize(cross(v1 - v0, v2 - v0));
-                _bestHit.albedo = 0.0f;
-                _bestHit.specular = 0.65f;
+                _bestHit.albedo = _meshObject.albedo;
+                _bestHit.specular = _meshObject.specular;
                 _bestHit.smoothness = 0.99f;
-                _bestHit.emission = 0.0f;
             }
         }
     }
@@ -350,7 +352,7 @@ float3 Shade(inout Ray _ray, RayHit _hit)
         // Sample the skybox and write it
         float theta = acos(_ray.direction.y) / -PI;
         float phi = atan2(_ray.direction.x, -_ray.direction.z) / -PI * 0.5f;
-        return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz * 3.0f;
+        return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz;
     }
 }
 

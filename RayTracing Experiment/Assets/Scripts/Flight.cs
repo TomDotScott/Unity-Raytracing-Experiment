@@ -10,44 +10,47 @@ public class Flight : MonoBehaviour
     public float sensitivity = 0.25f;
     Vector3 lastPos;
     private float totalRun;
+    bool canFly = true;
 
     private void Update()
     {
-        lastPos = Input.mousePosition - lastPos;
-        lastPos = new Vector3(-lastPos.y * sensitivity, lastPos.x * sensitivity, 0);
-        lastPos = new Vector3(transform.eulerAngles.x + lastPos.x, transform.eulerAngles.y + lastPos.y, 0);
-        transform.eulerAngles = lastPos;
-        lastPos = Input.mousePosition;
-        //Mouse  camera angle done.  
-
-        //Keyboard commands
-        float f = 0.0f;
-        var p = GetBaseInput();
-        if (Input.GetKey(KeyCode.LeftShift))
+        if (canFly)
         {
-            totalRun += Time.deltaTime;
-            p = p * totalRun * shiftAdd;
-            p.x = Mathf.Clamp(p.x, -maxShift, maxShift);
-            p.y = Mathf.Clamp(p.y, -maxShift, maxShift);
-            p.z = Mathf.Clamp(p.z, -maxShift, maxShift);
-        }
-        else
-        {
-            totalRun = Mathf.Clamp(totalRun * 0.5f, 1, 1000);
-            p = p * mainSpeed;
+            lastPos = Input.mousePosition - lastPos;
+            lastPos = new Vector3(-lastPos.y * sensitivity, lastPos.x * sensitivity, 0);
+            lastPos = new Vector3(transform.eulerAngles.x + lastPos.x, transform.eulerAngles.y + lastPos.y, 0);
+            transform.eulerAngles = lastPos;
+            lastPos = Input.mousePosition;
+            //Mouse  camera angle done.  
+
+            //Keyboard commands
+            float f = 0.0f;
+            var p = GetBaseInput();
+            if (Input.GetKey(KeyCode.LeftShift))
+            {
+                totalRun += Time.deltaTime;
+                p = p * totalRun * shiftAdd;
+                p.x = Mathf.Clamp(p.x, -maxShift, maxShift);
+                p.y = Mathf.Clamp(p.y, -maxShift, maxShift);
+                p.z = Mathf.Clamp(p.z, -maxShift, maxShift);
+            }
+            else
+            {
+                totalRun = Mathf.Clamp(totalRun * 0.5f, 1, 1000);
+                p = p * mainSpeed;
+            }
+
+            p = p * Time.deltaTime;
+
+
+            transform.Translate(p);
+
         }
 
-        p = p * Time.deltaTime;
         if (Input.GetKey(KeyCode.Space))
-        { //If player wants to move on X and Z axis only
-            f = transform.position.y;
-            transform.Translate(p);
-        }
-        else
         {
-            transform.Translate(p);
+            canFly = !canFly;
         }
-
     }
 
     private Vector3 GetBaseInput()

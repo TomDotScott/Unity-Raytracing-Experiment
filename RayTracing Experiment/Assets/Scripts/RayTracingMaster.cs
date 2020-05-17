@@ -29,11 +29,16 @@ public class RayTracingMaster : MonoBehaviour
     private ComputeBuffer vertexBuffer;
     private ComputeBuffer indexBuffer;
 
+    private static List<Transform> transformsToWatch = new List<Transform>(); 
+
     struct MeshObject
     {
         public Matrix4x4 localToWorldMatrix;
         public int indicesOffset;
         public int indicesCount;
+        public Vector3 albedo;
+        public Vector3 specular;
+        public float smoothness;
     }
 
     struct Sphere
@@ -49,6 +54,8 @@ public class RayTracingMaster : MonoBehaviour
     private void Awake()
     {
         mainCamera = GetComponent<Camera>();
+        transformsToWatch.Add(transform);
+        transformsToWatch.Add(directionalLight.transform);
     }
 
     private void OnEnable()
@@ -67,22 +74,26 @@ public class RayTracingMaster : MonoBehaviour
 
     private void Update()
     {
-        if (transform.hasChanged || directionalLight.transform.hasChanged)
+        foreach (Transform obj in transformsToWatch)
         {
-            transform.hasChanged = false;
-            directionalLight.transform.hasChanged = false;
-            currentSample = 0;
+            if (obj.hasChanged)
+            {
+                obj.hasChanged = false;
+                currentSample = 0;
+            }
         }
     }
 
     public static void RegisterObject(RayTracingObject obj)
     {
         rayTracingObjects.Add(obj);
+        transformsToWatch.Add(obj.gameObject.transform);
         meshesRequireRebuilding = true;
     }
     public static void UnregisterObject(RayTracingObject obj)
     {
         rayTracingObjects.Remove(obj);
+        transformsToWatch.Remove(obj.gameObject.transform);
         meshesRequireRebuilding = true;
     }
 
@@ -177,11 +188,13 @@ public class RayTracingMaster : MonoBehaviour
             {
                 localToWorldMatrix = obj.transform.localToWorldMatrix,
                 indicesOffset = firstIndex,
-                indicesCount = indices.Length
+                indicesCount = indices.Length,
+                albedo = new Vector3(obj.GetMaterial().color.r, obj.GetMaterial().color.g, obj.GetMaterial().color.b),
+                specular = new Vector3(obj.GetMaterial().GetColor("_SpecColor").r, obj.GetMaterial().GetColor("_SpecColor").g, obj.GetMaterial().GetColor("_SpecColor").b)
             });
         }
 
-        CreateComputeBuffer(ref meshObjectBuffer, meshObjects, 72);
+        CreateComputeBuffer(ref meshObjectBuffer, meshObjects, 100);
         CreateComputeBuffer(ref vertexBuffer, vertices, 12);
         CreateComputeBuffer(ref indexBuffer, indices, 4);
     }
