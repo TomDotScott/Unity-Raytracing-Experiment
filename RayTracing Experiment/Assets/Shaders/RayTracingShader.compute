@@ -13,7 +13,7 @@ Texture2D<float4> _SkyboxTexture;
 SamplerState sampler_SkyboxTexture;
 
 static const float PI = 3.14159265f;
-
+static const float EPSILON = 1e-8;
 
 float sdot(float3 _x, float3 _y, float _f = 1.0f)
 {
@@ -157,6 +157,49 @@ void IntersectSphere(Ray _ray, inout RayHit _bestHit, Sphere _sphere)
         _bestHit.emission = _sphere.emission;
     }
 }
+
+
+bool IntersectTriangle(Ray _ray, float3 _vert0, float3 _vert1, float3 _vert2, inout float _t, inout float _u, inout float _v)
+{
+    // Find the vectors for the two edges sharing vertex 0
+    float3 edge1 = _vert1 - _vert0;
+    float edge2 = _vert2 - _vert0;
+    
+    // Calculate the determinant 
+    float3 pVec = cross(_ray.direction, edge2);
+    
+    //If the determinant is near 0, then the ray lies in plane of the triangle
+    float det = dot(edge1, pVec);
+    
+    if (det < EPSILON)
+    {
+        return false;
+    }
+    
+    float invDet = 1.0f / det;
+    
+    //Calculate the distance from vert0 to the ray origin
+    float3 tVec = _ray.origin - _vert0;
+    
+    // Calculate U and test bounds
+    _u = dot(tVec, pVec) * invDet;
+    if (_u < 0.0f || _u > 1.0f){
+        return false;
+    }
+    
+    // Test V
+    float3 qVec = cross(tVec, edge1);
+    _v = dot(_ray.direction, qVec) * invDet;
+    if (_v < 0.0f || _u + _v > 1.0f)
+    {
+        return false;
+    }
+    
+    // Calculate T, ray intersects with Triangle
+    _t = dot(edge2, qVec) * invDet;
+    return true;
+}
+
 
 
 //-------------------------------------
