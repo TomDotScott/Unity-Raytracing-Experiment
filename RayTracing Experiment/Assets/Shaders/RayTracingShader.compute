@@ -212,6 +212,27 @@ RayHit Trace(Ray _ray)
     // Trace ground plane
     IntersectGroundPlane(_ray, bestHit);
 
+    // Trace a single triangle
+    float3 v0 = float3(-150.0f, 0, -150.0f);
+    float3 v1 = float3(150.0f, 0, -150.0f);
+    float3 v2 = float3(0, 150.0f * sqrt(2), -150.0f);
+    float t, u, v;
+    if (IntersectTriangle(_ray, v0, v1, v2, t, u, v))
+    {
+        if (t > 0 && t < bestHit.distance)
+        {
+            bestHit.distance = t;
+            bestHit.position = _ray.origin + t * _ray.direction;
+            bestHit.normal = normalize(cross(v1 - v0, v2 - v0));
+            bestHit.albedo = 0.00f;
+            bestHit.specular = 0.065 * float3(1.0f, 0.4f, 0.2f);
+            bestHit.smoothness = 0.9f;
+            bestHit.emission = 0.0f;
+        }
+    }
+    
+    
+    
     // Trace spheres
     uint numSpheres, stride;
     _Spheres.GetDimensions(numSpheres, stride);
@@ -300,7 +321,7 @@ float3 Shade(inout Ray _ray, RayHit _hit)
         // Sample the skybox and write it
         float theta = acos(_ray.direction.y) / -PI;
         float phi = atan2(_ray.direction.x, -_ray.direction.z) / -PI * 0.5f;
-        return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz;
+        return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz * 2;
     }
 }
 
