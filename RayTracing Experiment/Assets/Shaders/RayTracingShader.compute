@@ -15,6 +15,9 @@ SamplerState sampler_SkyboxTexture;
 static const float PI = 3.14159265f;
 static const float EPSILON = 1e-8;
 
+//-------------------------------------
+//- UTILITY
+
 float sdot(float3 _x, float3 _y, float _f = 1.0f)
 {
     return saturate(dot(_x, _y) * _f);
@@ -54,19 +57,20 @@ struct Sphere
 
 StructuredBuffer<Sphere> _Spheres;
 
+
 //-------------------------------------
 //- MESHES
+
 struct MeshObject
 {
     float4x4 localToWorldMatrix;
-    int indicesOffset;
-    int indicesCount;
+    int indices_offset;
+    int indices_count;
 };
 
 StructuredBuffer<MeshObject> _MeshObjects;
 StructuredBuffer<float3> _Vertices;
 StructuredBuffer<int> _Indices;
-
 
 
 //-------------------------------------
@@ -174,74 +178,69 @@ void IntersectSphere(Ray _ray, inout RayHit _bestHit, Sphere _sphere)
 
 bool IntersectTriangle(Ray _ray, float3 _vert0, float3 _vert1, float3 _vert2, inout float _t, inout float _u, inout float _v)
 {
-    // Find the vectors for the two edges sharing vertex 0
+	// find vectors for two edges sharing vert0
     float3 edge1 = _vert1 - _vert0;
     float3 edge2 = _vert2 - _vert0;
-    
-    // Calculate the determinant 
-    float3 pVec = cross(_ray.direction, edge2);
-    
-    //If the determinant is near 0, then the ray lies in plane of the triangle
-    float det = dot(edge1, pVec);
-    
+
+	// begin calculating determinant - also used to calculate U parameter
+    float3 pvec = cross(_ray.direction, edge2);
+
+	// if determinant is near zero, ray lies in plane of triangle
+    float det = dot(edge1, pvec);
+
+	// use backface culling
     if (det < EPSILON)
-    {
         return false;
-    }
-    
-    float invDet = 1.0f / det;
-    
-    //Calculate the distance from vert0 to the ray origin
-    float3 tVec = _ray.origin - _vert0;
-    
-    // Calculate U and test bounds
-    _u = dot(tVec, pVec) * invDet;
-    if (_u < 0.0f || _u > 1.0f)
-    {
+    float inv_det = 1.0f / det;
+
+	// calculate distance from vert0 to ray origin
+    float3 tvec = _ray.origin - _vert0;
+
+	// calculate U parameter and test bounds
+    _u = dot(tvec, pvec) * inv_det;
+    if (_u < 0.0 || _u > 1.0f)
         return false;
-    }
-    
-    // Test V
-    float3 qVec = cross(tVec, edge1);
-    _v = dot(_ray.direction, qVec) * invDet;
-    if (_v < 0.0f || _u + _v > 1.0f)
-    {
+
+	// prepare to test V parameter
+    float3 qvec = cross(tvec, edge1);
+
+	// calculate V parameter and test bounds
+    _v = dot(_ray.direction, qvec) * inv_det;
+    if (_v < 0.0 || _u + _v > 1.0f)
         return false;
-    }
-    
-    // Calculate T, ray intersects with Triangle
-    _t = dot(edge2, qVec) * invDet;
+
+	// calculate t, ray intersects triangle
+    _t = dot(edge2, qvec) * inv_det;
+
     return true;
 }
 
-void IntersectMeshObject(Ray _ray, inout RayHit _hit, MeshObject _mesh)
+void IntersectMeshObject(Ray _ray, inout RayHit _bestHit, MeshObject _meshObject)
 {
-    uint offset = _mesh.indicesOffset;
-    uint count = _mesh.indicesCount;
-    
-    for (uint i = 0; i < count; i += 3)
+    uint offset = _meshObject.indices_offset;
+    uint count = offset + _meshObject.indices_count;
+    for (uint i = offset; i < count; i += 3)
     {
-        float3 v0 = (mul(_mesh.localToWorldMatrix, float4(_Vertices[_Indices[i]], 1))).xyz;
-        float3 v1 = (mul(_mesh.localToWorldMatrix, float4(_Vertices[_Indices[i + 1]], 1))).xyz;
-        float3 v2 = (mul(_mesh.localToWorldMatrix, float4(_Vertices[_Indices[i + 2]], 1))).xyz;
-        
+        float3 v0 = (mul(_meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i]], 1))).xyz;
+        float3 v1 = (mul(_meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i + 1]], 1))).xyz;
+        float3 v2 = (mul(_meshObject.localToWorldMatrix, float4(_Vertices[_Indices[i + 2]], 1))).xyz;
+
         float t, u, v;
         if (IntersectTriangle(_ray, v0, v1, v2, t, u, v))
         {
-            if (t > 0 && t < _hit.distance)
+            if (t > 0 && t < _bestHit.distance)
             {
-                _hit.distance = t;
-                _hit.position = _ray.origin + t * _ray.direction;
-                _hit.normal = normalize(cross(v1 - v0, v2 - v0));
-                _hit.albedo = 0.0f;
-                _hit.specular = 0.65f;
-                _hit.smoothness = 0.99f;
-                _hit.emission = 0;
+                _bestHit.distance = t;
+                _bestHit.position = _ray.origin + t * _ray.direction;
+                _bestHit.normal = normalize(cross(v1 - v0, v2 - v0));
+                _bestHit.albedo = 0.0f;
+                _bestHit.specular = 0.65f;
+                _bestHit.smoothness = 0.99f;
+                _bestHit.emission = 0.0f;
             }
         }
     }
 }
-
 
 //-------------------------------------
 //- TRACE
@@ -249,26 +248,25 @@ void IntersectMeshObject(Ray _ray, inout RayHit _hit, MeshObject _mesh)
 RayHit Trace(Ray _ray)
 {
     RayHit bestHit = CreateRayHit();
-
     uint count, stride, i;
-    
-    //Trace the ground plane
+
+	// Trace ground plane
     IntersectGroundPlane(_ray, bestHit);
-    
-    //Trace Spheres
+
+	// Trace spheres
     _Spheres.GetDimensions(count, stride);
     for (i = 0; i < count; i++)
     {
         IntersectSphere(_ray, bestHit, _Spheres[i]);
     }
-    
-    //Trace Meshes
+
+	// Trace mesh objects
     _MeshObjects.GetDimensions(count, stride);
     for (i = 0; i < count; i++)
     {
         IntersectMeshObject(_ray, bestHit, _MeshObjects[i]);
     }
-    
+
     return bestHit;
 }
 
@@ -352,7 +350,7 @@ float3 Shade(inout Ray _ray, RayHit _hit)
         // Sample the skybox and write it
         float theta = acos(_ray.direction.y) / -PI;
         float phi = atan2(_ray.direction.x, -_ray.direction.z) / -PI * 0.5f;
-        return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz * 2;
+        return _SkyboxTexture.SampleLevel(sampler_SkyboxTexture, float2(phi, theta), 0).xyz * 3.0f;
     }
 }
 
