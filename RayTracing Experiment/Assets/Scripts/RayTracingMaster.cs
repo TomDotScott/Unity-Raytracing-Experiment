@@ -190,7 +190,8 @@ public class RayTracingMaster : MonoBehaviour
                 indicesOffset = firstIndex,
                 indicesCount = indices.Length,
                 albedo = new Vector3(obj.GetMaterial().color.r, obj.GetMaterial().color.g, obj.GetMaterial().color.b),
-                specular = new Vector3(obj.GetMaterial().GetColor("_SpecColor").r, obj.GetMaterial().GetColor("_SpecColor").g, obj.GetMaterial().GetColor("_SpecColor").b)
+                //specular = new Vector3(obj.GetMaterial().GetColor("_SpecColor").r, obj.GetMaterial().GetColor("_SpecColor").g, obj.GetMaterial().GetColor("_SpecColor").b)
+                specular = new Vector3(0.75f, 0.8f, 0.85f)
             });
         }
 
